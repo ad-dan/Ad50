@@ -127,7 +127,68 @@ app.post('/buy', (req,res)=>{
     })
   });
 
-})
+});
+
+app.post('/sell', (req,res)=>{
+  const {sym, id, amount} = req.body;
+  db.find({
+    _id: id
+  }, (err, doc)=>{
+    const response = new appResponse();
+    const ownedShares = [...doc[0].ownedStocks];
+    let stockIndex = -1;
+    ownedShares.forEach((stock,i) => {
+      if(stock.company == sym) {
+        stockIndex = i;
+      }
+    })
+    console.log(stockIndex);
+    if(stockIndex >= 0) {
+      console.log(stockIndex);
+      console.log(ownedShares[stockIndex]);
+      const newAmount = ownedShares[stockIndex].stock - amount;
+      if(newAmount >= 0) {
+        fetchStock(sym, (symbol, price)=>{
+          const transcationCost = price * amount;
+          const newBalance = doc[0].balance + transcationCost;
+          const sellTranscation = new transcation('Sell', symbol, amount, transcationCost);
+          if(newAmount == 0) {
+            ownedShares.splice(stockIndex, 1);
+          } else {
+            ownedShares[stockIndex].stock = newAmount;
+          }
+          db.update({
+            _id: id
+          },{
+            $push: {
+              history: sellTranscation
+            },
+            $set: {
+              balance: newBalance,
+              ownedStocks: ownedShares
+            }
+          }, {}, (err, docsUpdated)=>{
+            console.log(`${id} sold ${amount} stocks of ${sym} for ${transcationCost}`);
+            response.setType('Success');
+            response.setMessage('Stock was sold successfully');
+            res.send(response);
+          });
+
+        })
+      } else {
+        response.setType('Error');
+        response.setMessage('You do not have enough stocks to sell');
+        res.send(response);
+      }
+    } else {
+      console.log(ownedShares);
+      response.setType('Error');
+      response.setMessage('You do not own that stock');
+      res.send(response);
+    }
+
+  })
+});
 app.listen(3000);
 
 console.log('App is listening on port 3000');
