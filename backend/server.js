@@ -189,6 +189,27 @@ app.post('/sell', (req,res)=>{
 
   })
 });
+
+app.post('/history', (req,res)=>{
+  const { id } = req.body;
+  db.find({
+    _id: id
+  }, (err, doc)=>{
+    const history = doc[0].history || [];
+
+    const response = new appResponse();
+
+    response.setType('Success');
+    response.setMessage('Sending history data');
+
+    const historyResponse = {
+      history,
+      response
+    };
+
+    res.send(historyResponse);
+  })
+});
 app.listen(3000);
 
 console.log('App is listening on port 3000');
